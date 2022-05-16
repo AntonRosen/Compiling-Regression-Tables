@@ -1,0 +1,301 @@
+---
+title: "Thesis"
+author: "Anton Rosén"
+date: '2022-03-27'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(nnet)
+library(broom)
+library(modelr)
+library(lubridate)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(tidyquant)
+library(RcppRoll)
+require(topicmodels)
+require(pals)
+library(ggpubr)
+library(reshape)
+library(stargazer)
+library(kableExtra)
+```
+
+```{r, echo = FALSE}
+df3 <- read_csv("df-for-plot2.csv")
+
+```
+
+```{r, echo = FALSE}
+
+df3$Topic1[df3$Topic1 == 0.00] <- 0.00001
+df3$Topic2[df3$Topic2 == 0.00] <- 0.00001
+df3$Topic3[df3$Topic3 == 0.00] <- 0.00001
+df3$Topic4[df3$Topic4 == 0.00] <- 0.00001
+df3$Topic5[df3$Topic5 == 0.00] <- 0.00001
+df3$Topic6[df3$Topic6 == 0.00] <- 0.00001
+df3$Topic7[df3$Topic7 == 0.00] <- 0.00001
+df3$Topic8[df3$Topic8 == 0.00] <- 0.00001
+df3$Topic9[df3$Topic9 == 0.00] <- 0.00001
+df3$Topic10[df3$Topic10 == 0.00] <- 0.00001
+df3$Topic11[df3$Topic11 == 0.00] <- 0.00001
+df3$Topic12[df3$Topic12 == 0.00] <- 0.00001
+df3$Topic13[df3$Topic13 == 0.00] <- 0.00001
+df3$Topic14[df3$Topic14 == 0.00] <- 0.00001
+
+
+df3['IncrDate2'] = df3$IncrDate**2
+df3['IncrDate3'] = df3$IncrDate**3
+
+df3['LogTopic1'] = log(df3$Topic1)
+df3['LogTopic2'] = log(df3$Topic2)
+df3['LogTopic3'] = log(df3$Topic3)
+df3['LogTopic4'] = log(df3$Topic4)
+df3['LogTopic5'] = log(df3$Topic5)
+df3['LogTopic6'] = log(df3$Topic6)
+df3['LogTopic7'] = log(df3$Topic7)
+df3['LogTopic8'] = log(df3$Topic8)
+df3['LogTopic9'] = log(df3$Topic9)
+df3['LogTopic10'] = log(df3$Topic10)
+df3['LogTopic11'] = log(df3$Topic11)
+df3['LogTopic12'] = log(df3$Topic12)
+df3['LogTopic13'] = log(df3$Topic13)
+df3['LogTopic14'] = log(df3$Topic14)
+
+
+df3 <- na.omit(df3)
+min(df3$Freq)
+
+
+df3$UserGroup <- cut(df3$Freq,
+                      breaks=c(0, 100, 500, 2000, 10000, 72289),
+                      labels=c('Very low previous activity', 'Low previous activity', 'Moderate previous activity', 'High previous activity',
+                               'Very high previous activity'))
+
+df3$UserGroup <- factor(df3$UserGroup)
+table(df3$UserGroup)
+```
+
+
+```{r, echo=FALSE}
+
+mod02 <- glm(Labels ~ n:log(n) + recur:log(recur) + reg2inc:log(reg2inc) + Topic1:log(Topic1) + Topic3:log(Topic3) + Topic4:log(Topic4) +   Topic5:log(Topic5) + Topic6:log(Topic6) + Topic7:log(Topic7) + Topic8:log(Topic8) + Topic9:log(Topic9) + Topic10:log(Topic10) + Topic11:log(Topic11) + Topic13:log(Topic13) + Topic14:log(Topic14) + IncrDate:log(IncrDate),
+             family=binomial(link="logit"), data = df3)
+
+```
+
+```{r, echo=FALSE}
+modelsT <- list()
+modelsT[['Box Tidwell']] <- mod02
+```
+
+
+```{r}
+library(modelsummary)
+modelsummary(modelsT,
+             title = 'Testing Linearity',
+             vcov = "HC1",
+                          coef_rename = c("IncrDate:log(IncrDate)" = "Time x Ln Time", 
+                                          "n:log(n)" = "N of Words (comment) x Ln N of Words (comment)",
+                                          "recur:log(recur)" = "Comments by user(thread) x Ln comments by user(thread)",
+                                          "reg2inc:log(reg2inc)"= "Registration year x Ln Registration year",
+                                          "Topic1:log(Topic1)" = "Topic 1 dist. x Ln Topic 1 dist.",
+                                          "Topic3:log(Topic3)" = "Topic 3 dist. x Ln Topic 3 dist.",
+                                          "Topic4:log(Topic4)" = "Topic 4 dist. x Ln Topic 4 dist.",
+                                          "Topic5:log(Topic5)" = "Topic 5 dist. x Ln Topic 5 dist.",
+                                          "Topic6:log(Topic6)" = "Topic 6 dist. x Ln Topic 6 dist.",
+                                          "Topic7:log(Topic7)" = "Topic 7 dist. x Ln Topic 7 dist.",
+                                          "Topic8:log(Topic8)" = "Topic 8 dist. x Ln Topic 8 dist.",
+                                          "Topic9:log(Topic9)" = "Topic 9 dist. x Ln Topic 9 dist.",
+                                          "Topic10:log(Topic10)" = "Topic 10 dist. x Ln Topic 10 dist.",
+                                          "Topic11:log(Topic11)" = "Topic 11 dist. x Ln Topic 11 dist.",
+                                          "Topic13:log(Topic13)" = "Topic 13 dist. x Ln Topic 13 dist.",
+                                          "Topic14:log(Topic14)" = "Topic 14 dist. x Ln Topic 14 dist."),
+             output = "latex", 
+             stars = TRUE)
+```
+
+```{r, echo=FALSE}
+
+modT <- glm(Labels ~ log(n) + log(recur) + reg2inc + quotedummy + LogTopic1 + LogTopic3 + LogTopic4 + LogTopic5 + LogTopic6 + LogTopic7
+            + LogTopic8 + LogTopic9 + LogTopic10 + LogTopic11 + LogTopic13 + LogTopic14 + IncrDate + IncrDate2  + UserGroup + UserGroup:IncrDate + UserGroup:IncrDate2, family=binomial(link="logit"), na.action = na.exclude, data = df3)
+
+library(dplyr)
+
+model.data <- augment(modT, newdata=df3) %>% 
+  dplyr::mutate(index = 1:n())
+
+standard_res <- rstandard(modT)
+
+model.data <- cbind(model.data, standard_res)
+
+mdf <- model.data %>% 
+        filter(abs(standard_res) < 3)
+
+mdf$UserGroup <- relevel(mdf$UserGroup, ref='Moderate previous activity')
+```
+
+
+```{r, echo=FALSE}
+
+modA <- glm(Labels ~ IncrDate + IncrDate2, family=binomial(link="logit"), na.action=na.exclude, data = mdf)
+
+modB <- glm(Labels ~ UserGroup, family=binomial(link="logit"), na.action=na.exclude, data=mdf)
+
+modC <- glm(Labels ~ IncrDate + IncrDate2 + UserGroup + UserGroup:IncrDate + UserGroup:IncrDate2, family=binomial(link="logit"), na.action = na.exclude, data = mdf)
+              
+```
+
+```{r, echo=FALSE}
+models <- list()
+models[['Model 1']] <- modA
+models[['Model 2']] <- modB
+models[['Model 3']] <- modC
+```
+
+```{r}
+modelsummary(models,
+             title = 'Models 1-3',
+             vcov = "HC1", 
+             coef_rename = c("IncrDate" = "Time", "IncrDate2" = "Quadratic time",
+                             
+                             "UserGroupVery low previous activity" = "Very low previous activity",
+                             "UserGroupLow previous activity" = "Low previous activity",
+                             "UserGroupHigh previous activity" = "High previous activity",
+                             "UserGroupVery high previous activity" = "Very high previous activity",
+                             
+                             "IncrDate:UserGroupVery low previous activity" = "Very low previous activity x Time",
+                             "IncrDate:UserGroupLow previous activity" = "Low previous activity x Time",
+                             "IncrDate:UserGroupHigh previous activity" = "High previous activity x Time",
+                             "IncrDate:UserGroupVery high previous activity" = "Very high previous activity x Time",
+                             
+                             "IncrDate2:UserGroupVery low previous activity" = "Very low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupLow previous activity" = "Low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupHigh previous activity" = "High previous activity x Quadratic time",
+                             "IncrDate2:UserGroupVery high previous activity" = "Very high previous activity x Quadratic time"),
+             output = "latex", 
+             stars = TRUE)
+```
+
+```{r, echo=FALSE}
+modD <- glm(Labels ~ LogTopic1 + LogTopic3 + LogTopic4 + LogTopic5 + LogTopic6 + LogTopic7 + LogTopic8 + LogTopic9 + LogTopic10 + LogTopic11 + LogTopic13 + LogTopic14, family=binomial(link="logit"), na.action=na.exclude, data=mdf)
+```
+
+```{r, echo=FALSE}
+models2 <- list()
+models2[['Model 4']] <- modD
+```
+
+```{r, echo=FALSE}
+modelsummary(models2,
+             title = 'Model 4',
+             vcov = "HC1", 
+             coef_rename = c(
+                             "LogTopic1" = "Ln Topic 1 dist.",
+                             "LogTopic3" = "Ln Topic 3 dist.", "LogTopic4" = "Ln Topic 4 dist.",
+                             "LogTopic5" = "Ln Topic 5 dist.", "LogTopic6" = "Ln Topic 6 dist.", 
+                             "LogTopic7" = "Ln Topic 7 dist.", "LogTopic8" = "Ln Topic 8 dist.", 
+                             "LogTopic9" = "Ln Topic 9 dist.",
+                             "LogTopic10" = "Ln Topic 10 dist.", "LogTopic11" = "Ln Topic 11 dist.",
+                             "LogTopic13" = "Ln Topic 13 dist.", "LogTopic14" = "Ln Topic 14 dist."),
+             output = "latex", 
+             stars = TRUE)
+```
+
+
+```{r, echo=FALSE}
+modE <- glm(Labels ~ IncrDate + IncrDate2 + UserGroup + UserGroup:IncrDate + UserGroup:IncrDate2 + LogTopic1 + LogTopic3 + LogTopic4 + LogTopic5 + LogTopic6 + LogTopic7 + LogTopic8 + LogTopic9 + LogTopic10 + LogTopic11 + LogTopic13 + LogTopic14 + log(n) + log(recur) + reg2inc + quotedummy, family=binomial(link="logit"), na.action=na.exclude, data=mdf)
+
+```
+
+```{r, echo=FALSE}
+models3 <- list()
+models3[['Model 5']] <- modE
+```
+
+```{r, echo=FALSE}
+modelsummary(models3,
+             title = 'Full model',
+             vcov = "HC1", 
+             coef_rename = c("IncrDate" = "Time", "IncrDate2" = "Quadratic time",
+                              "LogTopic1" = "Ln Topic 1 dist.",
+                             "LogTopic3" = "Ln Topic 3 dist.", "LogTopic4" = "Ln Topic 4 dist.",
+                             "LogTopic5" = "Ln Topic 5 dist.", "LogTopic6" = "Ln Topic 6 dist.", 
+                             "LogTopic7" = "Ln Topic 7 dist.", "LogTopic8" = "Ln Topic 8 dist.", "LogTopic9" = "Ln Topic 9 dist.",
+                             "LogTopic10" = "Ln Topic 10 dist.", "LogTopic11" = "Ln Topic 11 dist.",
+                             "LogTopic13" = "Ln Topic 13 dist.", "LogTopic14" = "Ln Topic 14 dist.",
+                             "log(n)" = "Ln N of Words (comment)", "log(recur)" = "Ln comments by user (thread)",
+                             "reg2inc" = "Registration year",
+                             
+                             "UserGroupVery low previous activity" = "Very low previous activity",
+                             "UserGroupLow previous activity" = "Low previous activity",
+                             "UserGroupHigh previous activity" = "High previous activity",
+                             "UserGroupVery high previous activity" = "Very high previous activity",
+                             
+                             "IncrDate:UserGroupVery low previous activity" = "Very low previous activity x Time",
+                             "IncrDate:UserGroupLow previous activity" = "Low previous activity x Time",
+                             "IncrDate:UserGroupHigh previous activity" = "High previous activity x Time",
+                             "IncrDate:UserGroupVery high previous activity" = "Very high previous activity x Time",
+                             
+                             "IncrDate2:UserGroupVery low previous activity" = "Very low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupLow previous activity" = "Low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupHigh previous activity" = "High previous activity x Quadratic time",
+                             "IncrDate2:UserGroupVery high previous activity" = "Very high previous activity x Quadratic time"),
+             output = "latex", 
+             stars = TRUE)
+```
+
+```{r, echo=FALSE}
+library(equatiomatic)
+```
+
+```{r, echo=FALSE}
+extract_eq(modE, 
+           swap_var_names = c(
+                             "LogTopic1" = "Ln Topic 1 dist.",
+                             "LogTopic3" = "Ln Topic 3 dist.", "LogTopic4" = "Ln Topic 4 dist.",
+                             "LogTopic5" = "Ln Topic 5 dist.", "LogTopic6" = "Ln Topic 6 dist.", 
+                             "LogTopic7" = "Ln Topic 7 dist.", "LogTopic8" = "Ln Topic 8 dist.", "LogTopic9" = "Ln Topic 9 dist.",
+                             "LogTopic10" = "Ln Topic 10 dist.", "LogTopic11" = "Ln Topic 11 dist.",
+                             "LogTopic13" = "Ln Topic 13 dist.", "LogTopic14" = "Ln Topic 14 dist.",
+                             "log(n)" = "Ln N of Words (comment)", "log(recur)" = "Ln comments by user (thread)",
+                             "reg2inc" = "Registration year",
+                             "UserGroupVery low previous activity" = "Very low previous activity",
+                             "UserGroupLow previous activity" = "Low previous activity",
+                             "UserGroupHigh previous activity" = "High previous activity",
+                             "UserGroupVery high previous activity" = "Very high previous activity",
+                             "IncrDate:UserGroupVery low previous activity" = "Very low previous activity x Time",
+                             "IncrDate:UserGroupLow previous activity" = "Low previous activity x Time",
+                             "IncrDate:UserGroupHigh previous activity" = "High previous activity x Time",
+                             "IncrDate:UserGroupVery high previous activity" = "Very high previous activity x Time",
+                             "IncrDate2:UserGroupVery low previous activity" = "Very low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupLow previous activity" = "Low previous activity x Quadratic time",
+                             "IncrDate2:UserGroupHigh previous activity" = "High previous activity x Quadratic time",
+                             "IncrDate2:UserGroupVery high previous activity" = "Very high previous activity x Quadratic time",
+                             "IncrDate" = "Time", "IncrDate2" = "Quadratic time"),
+           wrap = TRUE,
+           terms_per_line = 1)
+```
+
+
+```{r}
+exp(coef(modB))
+
+exp(confint(modB))
+```
+
+
+```{r}
+exp(coef(modE))
+
+exp(confint(modE))
+```
+
